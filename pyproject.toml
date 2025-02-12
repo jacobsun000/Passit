@@ -5,4 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.115.8",
+    "keyboard>=0.13.5",
+    "markdown2>=2.5.3",
+    "mss>=10.0.0",
+    "numpy>=2.2.2",
+    "openai>=1.61.1",
+    "opencv-python>=4.11.0.86",
+    "pillow>=11.1.0",
+    "uvicorn>=0.34.0",
 ]
