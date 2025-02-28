@@ -1,5 +1,9 @@
 from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import os
 import markdown2
 from openai import OpenAI
 import base64
@@ -13,7 +17,7 @@ import time
 import os
 
 api_key = os.getenv("OPENAI_API_KEY")
-assert api_key, "Please set the OPENAI_API_KEY environment variable."
+# assert api_key, "Please set the OPENAI_API_KEY environment variable."
 
 
 class ScreenCapture:
@@ -27,11 +31,9 @@ class ScreenCapture:
             img = np.array(screenshot)
             img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)  # Convert to BGR
             img = cv2.resize(img, (1920, 1080))
-
             # Create a resizable selection window
             r = cv2.selectROI("Select Region", img, showCrosshair=True)
             cv2.destroyAllWindows()
-
             if r[2] > 0 and r[3] > 0:
                 self.monitor = {
                     "top": int(r[1]),
@@ -98,37 +100,47 @@ class ProblemSolver:
         return response.choices[0].message.content
 
 
-sc = ScreenCapture()
-ps = ProblemSolver(api_key, "Solve the following chemistry problem:")
+# sc = ScreenCapture()
+# ps = ProblemSolver(
+#     api_key,
+#     "Solve the following chemistry problem. The problem is uploaded as image. If there are multiple problems in the image, please solve the first one only. Please use concise language.",
+# )
 app = FastAPI()
 
 
-@app.get("/", response_class=HTMLResponse)
-async def solve():
-    image = sc.get_image_base64()
-    content = ps.ask(image)
-    content = markdown2.markdown(content)
-    return f"""
-    <html>
-        <head><title>LLM Response</title></head>
-        <body>
-            <h1>Response:</h2>
-            <div style="border:1px solid #ccc; padding:10px;">
-                {content}
-            </div>
-            <br>
-            <h2>Question:</h2>
-            <div style="border:1px solid #ccc; padding:10px;">
-                <img src="data:image/png;base64,{image}" width="400"/>
-            </div>
-            <a href="/">Refresh</a>
-        </body>
-    </html>
-    """
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to be more restrictive if needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Serve React static files
+frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+app.mount(
+    "/assets",
+    StaticFiles(directory=os.path.join(frontend_path, "assets")),
+    name="assets",
+)
+
+
+# Serve the index.html for all other routes (SPA fallback)
+@app.get("/")
+@app.get("/{full_path:path}")
+async def serve_react(full_path: str = ""):
+    return FileResponse(os.path.join(frontend_path, "index.html"))
+
+
+# @app.get("/answer", response_class=JSONResponse)
+# async def solve():
+#     image = sc.get_image_base64()
+#     content = ps.ask(image)
+#     content_markdown = markdown2.markdown(content)
+#     return JSONResponse(content={"image": image, "content": content_markdown})
 
 if __name__ == "__main__":
-    sc.adjust_box()
+    # sc.adjust_box()
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=80)
