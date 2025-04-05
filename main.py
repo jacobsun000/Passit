@@ -1,23 +1,20 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
-import markdown2
 from openai import OpenAI
 import base64
 import cv2
 import mss
 import numpy as np
-import keyboard
 from PIL import Image
 import io
 import time
-import os
 
 api_key = os.getenv("OPENAI_API_KEY")
-# assert api_key, "Please set the OPENAI_API_KEY environment variable."
+assert api_key, "Please set the OPENAI_API_KEY environment variable."
 
 
 class ScreenCapture:
@@ -100,11 +97,11 @@ class ProblemSolver:
         return response.choices[0].message.content
 
 
-# sc = ScreenCapture()
-# ps = ProblemSolver(
-#     api_key,
-#     "Solve the following chemistry problem. The problem is uploaded as image. If there are multiple problems in the image, please solve the first one only. Please use concise language.",
-# )
+sc = ScreenCapture()
+ps = ProblemSolver(
+    api_key,
+    "Solve the following chemistry problem. The problem is uploaded as image. If there are multiple problems in the image, please solve the first one only.",
+)
 app = FastAPI()
 
 
@@ -125,6 +122,14 @@ app.mount(
 )
 
 
+@app.get("/answer", response_class=JSONResponse)
+async def solve():
+    print("Start solving")
+    image = sc.get_image_base64()
+    content = ps.ask(image)
+    return JSONResponse(content={"image": image, "content": content})
+
+
 # Serve the index.html for all other routes (SPA fallback)
 @app.get("/")
 @app.get("/{full_path:path}")
@@ -132,15 +137,8 @@ async def serve_react(full_path: str = ""):
     return FileResponse(os.path.join(frontend_path, "index.html"))
 
 
-# @app.get("/answer", response_class=JSONResponse)
-# async def solve():
-#     image = sc.get_image_base64()
-#     content = ps.ask(image)
-#     content_markdown = markdown2.markdown(content)
-#     return JSONResponse(content={"image": image, "content": content_markdown})
-
 if __name__ == "__main__":
     # sc.adjust_box()
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=8081)

@@ -1,35 +1,40 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 
 function App() {
   const [data, setData] = useState(null);
-  const [keyLogs, setKeyLogs] = useState([]);
 
-  useEffect(() => {
-    // Fetch API data
-    axios.get("http://192.168.1.98/answer") // Adjust URL if hosted remotely
+  const fetchData = () => {
+    axios.get("http://192.168.1.235:8081/answer") // Adjust URL if hosted remotely
       .then(response => setData(response.data))
       .catch(error => console.error("Error fetching data:", error));
+  };
 
-    // Keyboard event listener
-    const handleKeyDown = (event) => {
-      setKeyLogs(prevLogs => [...prevLogs, event.key]); // Append key press to logs
+  useEffect(() => {
+    // Initial API fetch
+    fetchData();
+
+    // Full-screen tap event listener
+    const handleFullScreenTap = () => {
+      console.log("Full-screen tap detected!");
+      fetchData(); // Trigger API request on tap
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("touchstart", handleFullScreenTap);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("touchstart", handleFullScreenTap);
     };
   }, []);
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>LLM Response</h1>
+      <h3>LLM Response</h3>
       {data ? (
         <>
-          <div style={{ border: "1px solid #ccc", padding: "10px" }}>
-            <div dangerouslySetInnerHTML={{ __html: data.content }} />
+          <div style={{ border: "1px solid #ccc", padding: "10px", textAlign: "left" }}>
+            <ReactMarkdown>{data.content}</ReactMarkdown>  {/* Render markdown properly */}
           </div>
           <br />
           <h2>Captured Image:</h2>
@@ -40,12 +45,6 @@ function App() {
       ) : (
         <p>Loading...</p>
       )}
-
-      <br />
-      <h2>Keyboard Activity</h2>
-      <div style={{ border: "1px solid #ccc", padding: "10px", minHeight: "50px" }}>
-        {keyLogs.length > 0 ? keyLogs.join(" ") : "Press any key..."}
-      </div>
     </div>
   );
 }
